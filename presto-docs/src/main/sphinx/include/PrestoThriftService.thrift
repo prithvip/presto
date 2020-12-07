@@ -182,6 +182,19 @@ struct PrestoThriftBigintArray {
 }
 
 /**
+ * Elements of {@code nulls} array determine if a value for a corresponding row is null.
+ * Each elements of {@code sizes} array contains the number of elements in the corresponding values array.
+ * If row is null then the corresponding element in {@code sizes} is ignored.
+ * {@code values} is a integer block containing array elements one after another for all rows.
+ * The total number of elements in integer block must be equal to the sum of all sizes.
+ */
+struct PrestoThriftIntegerArray {
+  1: optional list<bool> nulls;
+  2: optional list<i32> sizes;
+  3: optional PrestoThriftInteger values;
+}
+
+/**
  * A set containing zero or more Ranges of the same type over a continuous space of possible values.
  * Ranges are coalesced into the most compact representation of non-overlapping Ranges.
  * This structure is used with comparable and orderable types like bigint, integer, double, varchar, etc.
@@ -252,6 +265,7 @@ struct PrestoThriftBlock {
   8: optional PrestoThriftJson jsonData;
   9: optional PrestoThriftHyperLogLog hyperLogLogData;
   10: optional PrestoThriftBigintArray bigintArrayData;
+  11: optional PrestoThriftIntegerArray integerArrayData;
 }
 
 /**

@@ -51,7 +51,8 @@ public class SqlFunctionExecutors
 
     public FunctionImplementationType getFunctionImplementationType(Language language)
     {
-        return supportedLanguages.get(language);
+        return FunctionImplementationType.THRIFT;
+        // return supportedLanguages.get(language);
     }
 
     public CompletableFuture<Block> executeFunction(ScalarFunctionImplementation functionImplementation, Page input, List<Integer> channels, List<Type> argumentTypes, Type returnType)

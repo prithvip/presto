@@ -878,7 +878,7 @@ public final class SystemSessionProperties
                 booleanProperty(
                         REMOTE_FUNCTIONS_ENABLED,
                         "Allow remote functions",
-                        false,
+                        true,
                         false),
                 booleanProperty(
                         CHECK_ACCESS_CONTROL_ON_UTILIZED_COLUMNS_ONLY,

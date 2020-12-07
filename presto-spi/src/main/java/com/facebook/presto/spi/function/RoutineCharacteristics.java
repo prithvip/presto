@@ -32,6 +32,7 @@ public class RoutineCharacteristics
     public static class Language
     {
         public static final Language SQL = new Language("SQL");
+        public static final Language JAVA = new Language("java");
 
         private final String language;
 
@@ -82,6 +83,7 @@ public class RoutineCharacteristics
     public enum NullCallClause
     {
         RETURNS_NULL_ON_NULL_INPUT,
+        NOT_CALLED_ON_NULL_INPUT,
         CALLED_ON_NULL_INPUT;
     }
 
