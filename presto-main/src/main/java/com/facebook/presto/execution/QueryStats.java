@@ -62,6 +62,7 @@ public class QueryStats
     private final Duration semanticAnalyzingTime;
     private final Duration columnAccessPermissionCheckingTime;
     private final Duration dispatchingTime;
+    // TODO: Add tracking here for dispatched timings 
     private final Duration executionTime;
     private final Duration analysisTime;
     private final Duration totalPlanningTime;

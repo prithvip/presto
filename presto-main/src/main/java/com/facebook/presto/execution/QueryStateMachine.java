@@ -15,11 +15,13 @@ package com.facebook.presto.execution;
 
 import com.facebook.airlift.log.Logger;
 import com.facebook.presto.Session;
+import com.facebook.presto.bytecode.Access;
 import com.facebook.presto.common.ErrorCode;
 import com.facebook.presto.common.resourceGroups.QueryType;
 import com.facebook.presto.common.transaction.TransactionId;
 import com.facebook.presto.common.type.Type;
 import com.facebook.presto.cost.StatsAndCosts;
+import com.facebook.presto.dispatcher.CoordinatorLocation;
 import com.facebook.presto.execution.QueryExecution.QueryOutputInfo;
 import com.facebook.presto.execution.StateMachine.StateChangeListener;
 import com.facebook.presto.memory.VersionedMemoryPoolId;
@@ -70,6 +72,7 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 import static com.facebook.presto.execution.BasicStageExecutionStats.EMPTY_STAGE_STATS;
+import static com.facebook.presto.execution.QueryState.DISPATCHED;
 import static com.facebook.presto.execution.QueryState.DISPATCHING;
 import static com.facebook.presto.execution.QueryState.FINISHED;
 import static com.facebook.presto.execution.QueryState.FINISHING;
@@ -147,6 +150,7 @@ public class QueryStateMachine
 
     private final AtomicReference<String> updateType = new AtomicReference<>();
 
+    private final AtomicReference<CoordinatorLocation> dispatchedLocation = new AtomicReference<>();
     private final AtomicReference<ExecutionFailureInfo> failureCause = new AtomicReference<>();
 
     private final AtomicReference<StatsAndCosts> planStatsAndCosts = new AtomicReference<>();
@@ -178,6 +182,36 @@ public class QueryStateMachine
             Metadata metadata,
             WarningCollector warningCollector)
     {
+        this(
+                query,
+                preparedQuery,
+                session,
+                self,
+                resourceGroup,
+                queryType,
+                transactionManager,
+                executor,
+                ticker,
+                metadata,
+                warningCollector,
+                new StateMachine<>("query " + query, executor, WAITING_FOR_PREREQUISITES, TERMINAL_QUERY_STATES)
+        );
+    }
+
+    private QueryStateMachine(
+            String query,
+            Optional<String> preparedQuery,
+            Session session,
+            URI self,
+            ResourceGroupId resourceGroup,
+            Optional<QueryType> queryType,
+            TransactionManager transactionManager,
+            Executor executor,
+            Ticker ticker,
+            Metadata metadata,
+            WarningCollector warningCollector,
+            StateMachine<QueryState> state)
+    {
         this.query = requireNonNull(query, "query is null");
         this.preparedQuery = requireNonNull(preparedQuery, "preparedQuery is null");
         this.session = requireNonNull(session, "session is null");
@@ -189,11 +223,12 @@ public class QueryStateMachine
         this.queryStateTimer = new QueryStateTimer(ticker);
         this.metadata = requireNonNull(metadata, "metadata is null");
 
-        this.queryState = new StateMachine<>("query " + query, executor, WAITING_FOR_PREREQUISITES, TERMINAL_QUERY_STATES);
+        this.queryState = state;
         this.finalQueryInfo = new StateMachine<>("finalQueryInfo-" + queryId, executor, Optional.empty());
         this.outputManager = new QueryOutputManager(executor);
         this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
     }
+
 
     /**
      * Created QueryStateMachines must be transitioned to terminal states to clean up resources.
@@ -226,6 +261,33 @@ public class QueryStateMachine
                 Ticker.systemTicker(),
                 metadata,
                 warningCollector);
+    }
+
+    public static QueryStateMachine beginDispatchedQuery(
+            String query,
+            Optional<String> preparedQuery,
+            Session session,
+            URI self,
+            ResourceGroupId resourceGroup,
+            Optional<QueryType> queryType,
+            TransactionManager transactionManager,
+            Executor executor,
+            Metadata metadata,
+            WarningCollector warningCollector)
+    {
+        return new QueryStateMachine(
+                query,
+                preparedQuery,
+                session,
+                self,
+                resourceGroup,
+                queryType,
+                transactionManager,
+                executor,
+                Ticker.systemTicker(),
+                metadata,
+                warningCollector,
+                new StateMachine<>("query " + query, executor, DISPATCHING, TERMINAL_QUERY_STATES));
     }
 
     static QueryStateMachine beginWithTicker(
@@ -784,6 +846,16 @@ public class QueryStateMachine
         return queryState.setIf(DISPATCHING, currentState -> currentState.ordinal() < DISPATCHING.ordinal());
     }
 
+    public boolean transitionToDispatched(CoordinatorLocation coordinatorLocation)
+    {
+        // TODO: I think this is thread-safe, but need to come back here and think through this properly.
+        //  We need to make sure that coordinatorLocation is set before triggering the state change,
+        //  so listeners can see the location. So that means the location should only be observed if the transition to DISPATCHED is successful.
+        dispatchedLocation.compareAndSet(null, coordinatorLocation);
+        return queryState.setIf(DISPATCHED, currentState -> currentState.ordinal() < DISPATCHED.ordinal());
+        // TODO: We have to do a bunch of tear down/clean up here since this is a terminal state.
+    }
+
     public boolean transitionToPlanning()
     {
         queryStateTimer.beginPlanning();
@@ -1005,6 +1077,14 @@ public class QueryStateMachine
     public Optional<DateTime> getEndTime()
     {
         return queryStateTimer.getEndTime();
+    }
+
+    public Optional<CoordinatorLocation> getDispatchedLocation()
+    {
+        if (queryState.get() != DISPATCHED) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable(this.dispatchedLocation.get());
     }
 
     public Optional<ExecutionFailureInfo> getFailureInfo()

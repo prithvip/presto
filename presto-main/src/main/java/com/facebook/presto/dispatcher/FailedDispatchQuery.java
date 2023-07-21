@@ -109,6 +109,9 @@ public class FailedDispatchQuery
     public void startWaitingForResources() {}
 
     @Override
+    public void dispatch(CoordinatorLocation coordinatorLocation) {}
+
+    @Override
     public void fail(Throwable throwable) {}
 
     @Override

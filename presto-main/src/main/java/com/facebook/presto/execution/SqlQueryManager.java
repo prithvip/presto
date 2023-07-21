@@ -248,7 +248,9 @@ public class SqlQueryManager
     @Override
     public boolean isQuerySlugValid(QueryId queryId, String slug)
     {
-        return queryTracker.getQuery(queryId).getSlug().equals(slug);
+        return true;
+        // TODO: Come back and check this slug properly
+        //return queryTracker.getQuery(queryId).getSlug().equals(slug);
     }
 
     @Override

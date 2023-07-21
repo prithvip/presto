@@ -25,6 +25,7 @@ import static java.util.concurrent.TimeUnit.MINUTES;
 public class ServerConfig
 {
     public static final String POOL_TYPE = "pool_type";
+    private boolean dispatcher;
     private boolean resourceManager;
     private boolean resourceManagerEnabled;
     private boolean catalogServer;
@@ -37,6 +38,18 @@ public class ServerConfig
     private boolean enhancedErrorReporting = true;
     private boolean queryResultsCompressionEnabled = true;
     private NodePoolType poolType = DEFAULT;
+
+    public boolean isDispatcher()
+    {
+        return dispatcher;
+    }
+
+    @Config("dispatcher")
+    public ServerConfig setDispatcher(boolean dispatcher)
+    {
+        this.dispatcher = dispatcher;
+        return this;
+    }
 
     public boolean isResourceManager()
     {

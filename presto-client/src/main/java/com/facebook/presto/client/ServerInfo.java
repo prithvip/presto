@@ -35,6 +35,7 @@ public class ServerInfo
     private final NodeVersion nodeVersion;
     private final String environment;
     private final boolean coordinator;
+    private final boolean dispatcher;
     private final boolean starting;
 
     // optional to maintain compatibility with older servers
@@ -46,12 +47,14 @@ public class ServerInfo
             @JsonProperty("nodeVersion") NodeVersion nodeVersion,
             @JsonProperty("environment") String environment,
             @JsonProperty("coordinator") boolean coordinator,
+            @JsonProperty("dispatcher") boolean dispatcher,
             @JsonProperty("starting") boolean starting,
             @JsonProperty("uptime") Optional<Duration> uptime)
     {
         this.nodeVersion = requireNonNull(nodeVersion, "nodeVersion is null");
         this.environment = requireNonNull(environment, "environment is null");
         this.coordinator = coordinator;
+        this.dispatcher = dispatcher;
         this.starting = starting;
         this.uptime = requireNonNull(uptime, "uptime is null");
     }
@@ -75,6 +78,13 @@ public class ServerInfo
     public boolean isCoordinator()
     {
         return coordinator;
+    }
+
+    @ThriftField(6)
+    @JsonProperty
+    public boolean isDispatcher()
+    {
+        return dispatcher;
     }
 
     @ThriftField(4)
@@ -119,6 +129,7 @@ public class ServerInfo
                 .add("nodeVersion", nodeVersion)
                 .add("environment", environment)
                 .add("coordinator", coordinator)
+                .add("dispatcher", dispatcher)
                 .add("uptime", uptime.orElse(null))
                 .omitNullValues()
                 .toString();

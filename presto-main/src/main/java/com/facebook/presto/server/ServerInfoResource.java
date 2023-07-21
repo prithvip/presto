@@ -52,6 +52,7 @@ public class ServerInfoResource
     private final String environment;
     private final boolean coordinator;
     private final boolean resourceManager;
+    private final boolean dispatcher;
     private final StaticCatalogStore catalogStore;
     private final GracefulShutdownHandler shutdownHandler;
     private final long startTime = System.nanoTime();
@@ -65,6 +66,7 @@ public class ServerInfoResource
         this.environment = requireNonNull(nodeInfo, "nodeInfo is null").getEnvironment();
         this.coordinator = requireNonNull(serverConfig, "serverConfig is null").isCoordinator();
         this.resourceManager = serverConfig.isResourceManager();
+        this.dispatcher = serverConfig.isDispatcher();
         this.catalogStore = requireNonNull(catalogStore, "catalogStore is null");
         this.shutdownHandler = requireNonNull(shutdownHandler, "shutdownHandler is null");
         this.nodeResourceStatusProvider = requireNonNull(nodeResourceStatusProvider, "nodeResourceStatusProvider is null");
@@ -75,7 +77,7 @@ public class ServerInfoResource
     public ServerInfo getInfo()
     {
         boolean starting = resourceManager ? true : !catalogStore.areCatalogsLoaded();
-        return new ServerInfo(version, environment, coordinator, starting, Optional.of(nanosSince(startTime)));
+        return new ServerInfo(version, environment, coordinator, dispatcher, starting, Optional.of(nanosSince(startTime)));
     }
 
     @PUT
@@ -138,4 +140,18 @@ public class ServerInfoResource
         // return 404 to allow load balancers to only send traffic to the coordinator
         return Response.status(Response.Status.NOT_FOUND).build();
     }
+
+    @GET
+    @Path("coordinator")
+    @Produces(TEXT_PLAIN)
+    @RolesAllowed(ADMIN)
+    public Response getServerDispatcher()
+    {
+        if (dispatcher) {
+            return Response.ok().build();
+        }
+        // return 404 to allow load balancers to only send traffic to the dispatcher
+        return Response.status(Response.Status.NOT_FOUND).build();
+    }
+
 }

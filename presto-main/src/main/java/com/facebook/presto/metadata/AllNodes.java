@@ -29,6 +29,7 @@ public class AllNodes
     private final Set<InternalNode> activeCoordinators;
     private final Set<InternalNode> activeResourceManagers;
     private final Set<InternalNode> activeCatalogServers;
+    private final Set<InternalNode> activeDispatchers;
     private final int activeWorkerCount;
 
     public AllNodes(

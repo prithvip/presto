@@ -304,6 +304,8 @@ public class QueryStateTimer
         return getDuration(dispatchingTime, beginDispatchingNanos);
     }
 
+    // TODO: Track time waiting for dispatch
+
     public Duration getPlanningTime()
     {
         return getDuration(planningTime, beginPlanningNanos);

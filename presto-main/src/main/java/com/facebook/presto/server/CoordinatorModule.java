@@ -25,10 +25,13 @@ import com.facebook.presto.cost.CostComparator;
 import com.facebook.presto.cost.StatsCalculatorModule;
 import com.facebook.presto.cost.TaskCountEstimator;
 import com.facebook.presto.dispatcher.DispatchExecutor;
+import com.facebook.presto.dispatcher.DispatchLocationFileMap;
 import com.facebook.presto.dispatcher.DispatchManager;
 import com.facebook.presto.dispatcher.DispatchQueryFactory;
 import com.facebook.presto.dispatcher.FailedDispatchQueryFactory;
-import com.facebook.presto.dispatcher.LocalDispatchQueryFactory;
+import com.facebook.presto.dispatcher.PollingQueryExecutor;
+import com.facebook.presto.dispatcher.RemoteDispatchQueryFactory;
+import com.facebook.presto.dispatcher.RemoteDispatchTracker;
 import com.facebook.presto.event.QueryMonitor;
 import com.facebook.presto.event.QueryMonitorConfig;
 import com.facebook.presto.execution.ClusterSizeMonitor;
@@ -48,6 +51,7 @@ import com.facebook.presto.execution.RemoteTaskFactory;
 import com.facebook.presto.execution.SqlQueryManager;
 import com.facebook.presto.execution.TaskInfo;
 import com.facebook.presto.execution.TaskManagerConfig;
+import com.facebook.presto.execution.resourceGroups.ExternalResourceGroupManager;
 import com.facebook.presto.execution.resourceGroups.InternalResourceGroupManager;
 import com.facebook.presto.execution.resourceGroups.ResourceGroupManager;
 import com.facebook.presto.execution.scheduler.AdaptivePhasedExecutionPolicy;
@@ -174,9 +178,11 @@ public class CoordinatorModule
         newExporter(binder).export(QueryManager.class).withGeneratedName();
 
         binder.bind(SessionSupplier.class).to(QuerySessionSupplier.class).in(Scopes.SINGLETON);
+        // TODO: Make this configurable
         binder.bind(InternalResourceGroupManager.class).in(Scopes.SINGLETON);
-        newExporter(binder).export(InternalResourceGroupManager.class).withGeneratedName();
-        binder.bind(ResourceGroupManager.class).to(InternalResourceGroupManager.class);
+        binder.bind(ExternalResourceGroupManager.class).in(Scopes.SINGLETON);
+        newExporter(binder).export(ExternalResourceGroupManager.class).withGeneratedName();
+        binder.bind(ResourceGroupManager.class).to(ExternalResourceGroupManager.class);
         binder.bind(RetryCircuitBreaker.class).in(Scopes.SINGLETON);
         newExporter(binder).export(RetryCircuitBreaker.class).withGeneratedName();
 
@@ -193,8 +199,20 @@ public class CoordinatorModule
         binder.bind(DispatchExecutor.class).in(Scopes.SINGLETON);
         newExporter(binder).export(DispatchExecutor.class).withGeneratedName();
 
+        binder.bind(RemoteDispatchTracker.class).in(Scopes.SINGLETON);
+        binder.bind(DispatchLocationFileMap.class).in(Scopes.SINGLETON);
+
+        // Dispatchers shouldn't poll from the queue
+        // TODO: Refactor and create separate Dispatcher module
+        install(installModuleIf(
+                ServerConfig.class,
+                config -> !config.isDispatcher(),
+                b -> b.bind(PollingQueryExecutor.class).in(Scopes.SINGLETON)));
+
         // local dispatcher
-        binder.bind(DispatchQueryFactory.class).to(LocalDispatchQueryFactory.class);
+        // binder.bind(DispatchQueryFactory.class).to(LocalDispatchQueryFactory.class);
+        // TODO: Make this configurable for dispatcher role
+        binder.bind(DispatchQueryFactory.class).to(RemoteDispatchQueryFactory.class);
 
         // cluster memory manager
         binder.bind(ClusterMemoryManager.class).in(Scopes.SINGLETON);

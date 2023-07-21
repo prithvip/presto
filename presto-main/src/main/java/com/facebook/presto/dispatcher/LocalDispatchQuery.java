@@ -396,4 +396,7 @@ public class LocalDispatchQuery
             return Optional.empty();
         }
     }
+
+    @Override
+    public void dispatch(CoordinatorLocation coordinatorLocation) {}
 }

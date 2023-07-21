@@ -100,6 +100,7 @@ public class QueryStatistics
         this.semanticAnalyzingTime = requireNonNull(semanticAnalyzingTime, "semanticAnalyzingTime is null");
         this.columnAccessPermissionCheckingTime = requireNonNull(columnAccessPermissionCheckingTime, "columnAccessPermissionCheckingTime is null");
         this.dispatchingTime = requireNonNull(dispatchingTime, "dispatchingTime is null");
+        // TODO: Create separate dispatch event type to log
         this.planningTime = requireNonNull(planningTime, "planningTime is null");
         this.analysisTime = requireNonNull(analysisTime, "analysisTime is null");
         this.executionTime = requireNonNull(executionTime, "executionTime is null");

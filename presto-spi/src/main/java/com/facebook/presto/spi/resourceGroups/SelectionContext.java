@@ -33,7 +33,8 @@ public final class SelectionContext<T>
     public SelectionContext(ResourceGroupId resourceGroupId, T context)
     {
         this.resourceGroupId = requireNonNull(resourceGroupId, "resourceGroupId is null");
-        this.context = requireNonNull(context, "context is null");
+        // TODO: Add back this null check
+        this.context = context;
         this.firstDynamicSegmentPosition = OptionalInt.empty();
     }
 

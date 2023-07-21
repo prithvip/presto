@@ -41,29 +41,33 @@ public enum QueryState
      */
     DISPATCHING(false, 4),
     /**
+     * Query has been dispatched. This terminal state is only used by standalone dispatcher.
+     */
+    DISPATCHED(true, 5),
+    /**
      * Query is being planned.
      */
-    PLANNING(false, 5),
+    PLANNING(false, 6),
     /**
      * Query execution is being started.
      */
-    STARTING(false, 6),
+    STARTING(false, 7),
     /**
      * Query has at least one running task.
      */
-    RUNNING(false, 7),
+    RUNNING(false, 8),
     /**
      * Query is finishing (e.g. commit for autocommit queries)
      */
-    FINISHING(false, 8),
+    FINISHING(false, 9),
     /**
      * Query has finished executing and all output has been consumed.
      */
-    FINISHED(true, 9),
+    FINISHED(true, 10),
     /**
      * Query execution failed.
      */
-    FAILED(true, 10);
+    FAILED(true, 11);
 
     public static final Set<QueryState> TERMINAL_QUERY_STATES = Stream.of(QueryState.values()).filter(QueryState::isDone).collect(toImmutableSet());
 

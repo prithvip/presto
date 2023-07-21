@@ -15,6 +15,7 @@ package com.facebook.presto.execution;
 
 import com.facebook.presto.Session;
 import com.facebook.presto.common.ErrorCode;
+import com.facebook.presto.dispatcher.CoordinatorLocation;
 import com.facebook.presto.execution.StateMachine.StateChangeListener;
 import com.facebook.presto.server.BasicQueryInfo;
 import com.facebook.presto.spi.resourceGroups.ResourceGroupQueryLimits;
@@ -28,6 +29,8 @@ public interface ManagedQueryExecution
     void startWaitingForPrerequisites();
 
     void startWaitingForResources();
+
+    void dispatch(CoordinatorLocation coordinatorLocation);
 
     void fail(Throwable cause);
 

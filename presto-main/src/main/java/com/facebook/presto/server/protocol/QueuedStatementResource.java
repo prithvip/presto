@@ -19,6 +19,7 @@ import com.facebook.presto.client.QueryError;
 import com.facebook.presto.client.QueryResults;
 import com.facebook.presto.client.StatementStats;
 import com.facebook.presto.common.ErrorCode;
+import com.facebook.presto.dispatcher.CoordinatorLocation;
 import com.facebook.presto.dispatcher.DispatchExecutor;
 import com.facebook.presto.dispatcher.DispatchInfo;
 import com.facebook.presto.dispatcher.DispatchManager;
@@ -38,6 +39,7 @@ import com.google.common.collect.Ordering;
 import com.google.common.util.concurrent.ListenableFuture;
 import io.airlift.units.DataSize;
 import io.airlift.units.Duration;
+import org.apache.http.client.utils.URIBuilder;
 import org.weakref.jmx.Managed;
 import org.weakref.jmx.Nested;
 
@@ -60,6 +62,7 @@ import javax.ws.rs.container.Suspended;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
+import javax.ws.rs.core.UriBuilder;
 import javax.ws.rs.core.UriInfo;
 
 import java.net.URI;
@@ -585,23 +588,29 @@ public class QueuedStatementResource
                         .build()));
             }
 
-            if (!waitForDispatched().isDone()) {
-                return immediateFuture(withCompressionConfiguration(Response.ok(createQueryResults(token + 1, uriInfo, xForwardedProto, xPrestoPrefixUrl, dispatchInfo.get())), compressionEnabled).build());
+            // If this future is done, the query has been dispatched and acked by the receiving coordinator. So redirect the client to the new coordinator's executing endpoint.
+            // Otherwise, continue polling.
+            if (waitForDispatched().isDone()) {
+                return immediateFuture(withCompressionConfiguration(Response.ok(
+                        createQueryResults(0, uriInfo, xForwardedProto, xPrestoPrefixUrl, dispatchInfo.get())),
+                        compressionEnabled)
+                        .build());
             }
+            return immediateFuture(withCompressionConfiguration(Response.ok(createQueryResults(token + 1, uriInfo, xForwardedProto, xPrestoPrefixUrl, dispatchInfo.get())), compressionEnabled).build());
 
-            com.facebook.presto.server.protocol.Query query;
-            try {
-                query = queryProvider.getQuery(queryId, slug);
-            }
-            catch (WebApplicationException e) {
-                return immediateFuture(withCompressionConfiguration(Response.ok(createQueryResults(token + 1, uriInfo, xForwardedProto, xPrestoPrefixUrl, dispatchInfo.get())), compressionEnabled).build());
-            }
-            // If this future completes successfully, the next URI will redirect to the executing statement endpoint.
-            // Hence it is safe to hardcode the token to be 0.
-            return transform(
-                    query.waitForResults(0, uriInfo, getScheme(xForwardedProto, uriInfo), maxWait, TARGET_RESULT_SIZE),
-                    results -> QueryResourceUtil.toResponse(query, results, xPrestoPrefixUrl, compressionEnabled),
-                    directExecutor());
+//            com.facebook.presto.server.protocol.Query query;
+//            try {
+//                query = queryProvider.getQuery(queryId, slug);
+//            }
+//            catch (WebApplicationException e) {
+//                return immediateFuture(withCompressionConfiguration(Response.ok(createQueryResults(token + 1, uriInfo, xForwardedProto, xPrestoPrefixUrl, dispatchInfo.get())), compressionEnabled).build());
+//            }
+//            // If this future completes successfully, the next URI will redirect to the executing statement endpoint.
+//            // Hence it is safe to hardcode the token to be 0.
+//            return transform(
+//                    query.waitForResults(0, uriInfo, getScheme(xForwardedProto, uriInfo), maxWait, TARGET_RESULT_SIZE),
+//                    results -> QueryResourceUtil.toResponse(query, results, xPrestoPrefixUrl, compressionEnabled),
+//                    directExecutor());
         }
 
         public synchronized void cancel()
@@ -633,6 +642,20 @@ public class QueuedStatementResource
             // if failed, query is complete
             if (dispatchInfo.getFailureInfo().isPresent()) {
                 return null;
+            }
+            if (dispatchInfo.getCoordinatorLocation().isPresent()) {
+                URI coordinatorURI = dispatchInfo.getCoordinatorLocation().get().getUri(uriInfo, xForwardedProto);
+                UriBuilder uri = uriInfo.getBaseUriBuilder()
+                        .host(coordinatorURI.getHost())
+                        .port(coordinatorURI.getPort())
+                        .scheme(getScheme(xForwardedProto, uriInfo))
+                        .replacePath("/v1/statement/executing")
+                        .path(queryId.toString())
+                        .path(String.valueOf(token))
+                        .replaceQuery("")
+                        .queryParam("slug", slug);
+                // TODO: Support target result size session param here
+                return uri.build();
             }
             return getQueuedUri(queryId, slug, token, uriInfo, xForwardedProto, xPrestoPrefixUrl);
         }

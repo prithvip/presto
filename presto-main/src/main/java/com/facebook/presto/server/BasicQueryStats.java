@@ -117,6 +117,7 @@ public class BasicQueryStats
 
         this.waitingForPrerequisitesTime = requireNonNull(waitingForPrerequisitesTime, "waitingForPrerequisitesTimex is null");
         this.queuedTime = requireNonNull(queuedTime, "queuedTime is null");
+        // TODO: Add info on dispatching time
         this.elapsedTime = requireNonNull(elapsedTime, "elapsedTime is null");
         this.executionTime = requireNonNull(executionTime, "executionTime is null");
 

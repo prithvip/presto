@@ -80,6 +80,7 @@ public class StatementStats
         this.state = requireNonNull(state, "state is null");
         this.waitingForPrerequisites = waitingForPrerequisites;
         this.queued = queued;
+        // TODO: Add info about dispatching timings
         this.scheduled = scheduled;
         this.nodes = nodes;
         this.totalSplits = totalSplits;
