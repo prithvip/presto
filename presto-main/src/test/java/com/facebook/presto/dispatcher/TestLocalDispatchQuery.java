@@ -89,6 +89,7 @@ import static org.testng.Assert.fail;
 public class TestLocalDispatchQuery
 {
     private static final QueryPrerequisites QUERY_PREREQUISITES = new DefaultQueryPrerequisites();
+    private static final QueryForwarder QUERY_FORWARDER = new QueryForwarder();
     private final MetadataManager metadata = MetadataManager.createTestMetadataManager();
 
     @Test
@@ -98,11 +99,13 @@ public class TestLocalDispatchQuery
 
         LocalDispatchQuery query = new LocalDispatchQuery(
                 createStateMachine(),
+                "slug",
                 createQueryMonitor(eventListener),
                 immediateFailedFuture(new IllegalStateException("abc")),
                 createClusterSizeMonitor(0),
                 directExecutor(),
                 dispatchQuery -> {},
+                QUERY_FORWARDER,
                 execution -> {},
                 false,
                 QUERY_PREREQUISITES);
@@ -124,6 +127,7 @@ public class TestLocalDispatchQuery
 
         LocalDispatchQuery query = new LocalDispatchQuery(
                 stateMachine,
+                "slug",
                 createQueryMonitor(eventListener),
                 queryExecutionFuture,
                 createClusterSizeMonitor(0),
@@ -131,6 +135,7 @@ public class TestLocalDispatchQuery
                 dispatchQuery -> {
                     throw new QueryQueueFullException(new ResourceGroupId("global"));
                 },
+                QUERY_FORWARDER,
                 execution -> {},
                 false,
                 QUERY_PREREQUISITES);
@@ -153,11 +158,13 @@ public class TestLocalDispatchQuery
 
         LocalDispatchQuery query = new LocalDispatchQuery(
                 stateMachine,
+                "slug",
                 createQueryMonitor(eventListener),
                 immediateFuture(null),
                 createClusterSizeMonitor(0),
                 directExecutor(),
                 dispatchQuery -> {},
+                QUERY_FORWARDER,
                 execution -> {
                     throw new AccessDeniedException("sdf");
                 },
@@ -187,11 +194,13 @@ public class TestLocalDispatchQuery
 
         LocalDispatchQuery query = new LocalDispatchQuery(
                 stateMachine,
+                "slug",
                 createQueryMonitor(eventListener),
                 immediateFuture(null),
                 createClusterSizeMonitor(0),
                 directExecutor(),
                 dispatchQuery -> {},
+                QUERY_FORWARDER,
                 execution -> {
                     throw new AccessDeniedException("sdf");
                 },
@@ -226,11 +235,13 @@ public class TestLocalDispatchQuery
 
         LocalDispatchQuery query = new LocalDispatchQuery(
                 stateMachine,
+                "slug",
                 createQueryMonitor(eventListener),
                 immediateFuture(null),
                 createClusterSizeMonitor(0),
                 directExecutor(),
                 dispatchQuery -> {},
+                QUERY_FORWARDER,
                 execution -> {},
                 false,
                 new QueryPrerequisites() {
@@ -266,11 +277,13 @@ public class TestLocalDispatchQuery
 
         LocalDispatchQuery query = new LocalDispatchQuery(
                 stateMachine,
+                "slug",
                 createQueryMonitor(eventListener),
                 immediateFuture(null),
                 createClusterSizeMonitor(0),
                 directExecutor(),
                 dispatchQuery -> {},
+                QUERY_FORWARDER,
                 execution -> {},
                 false,
                 (queryId, context, warningCollector) -> prerequisitesFuture);
@@ -294,6 +307,7 @@ public class TestLocalDispatchQuery
 
         LocalDispatchQuery query = new LocalDispatchQuery(
                 stateMachine,
+                "slug",
                 createQueryMonitor(eventListener),
                 immediateFuture(null),
                 createClusterSizeMonitor(0),
@@ -301,6 +315,7 @@ public class TestLocalDispatchQuery
                 dispatchQuery -> {
                     queryQueuerCalled.compareAndSet(false, true);
                 },
+                QUERY_FORWARDER,
                 execution -> {},
                 false,
                 (queryId, context, warningCollector) -> prerequisitesFuture);
@@ -325,11 +340,13 @@ public class TestLocalDispatchQuery
 
         LocalDispatchQuery query = new LocalDispatchQuery(
                 stateMachine,
+                "slug",
                 createQueryMonitor(eventListener),
                 immediateFuture(new MockQueryExecution()),
                 createClusterSizeMonitor(0),
                 directExecutor(),
                 dispatchQuery -> {},
+                QUERY_FORWARDER,
                 execution -> {
                     throw new AccessDeniedException("sdf");
                 },
@@ -357,11 +374,13 @@ public class TestLocalDispatchQuery
 
         LocalDispatchQuery query = new LocalDispatchQuery(
                 stateMachine,
+                "slug",
                 createQueryMonitor(eventListener),
                 immediateFuture(null),
                 createClusterSizeMonitor(1),
                 directExecutor(),
                 dispatchQuery -> {},
+                QUERY_FORWARDER,
                 execution -> {},
                 false,
                 QUERY_PREREQUISITES);
@@ -388,11 +407,13 @@ public class TestLocalDispatchQuery
 
         LocalDispatchQuery query = new LocalDispatchQuery(
                 stateMachine,
+                "slug",
                 createQueryMonitor(eventListener),
                 immediateFuture(null),
                 createClusterSizeMonitor(0),
                 directExecutor(),
                 dispatchQuery -> {},
+                QUERY_FORWARDER,
                 execution -> {},
                 false,
                 QUERY_PREREQUISITES);
@@ -417,11 +438,13 @@ public class TestLocalDispatchQuery
 
         LocalDispatchQuery query = new LocalDispatchQuery(
                 stateMachine,
+                "slug",
                 createQueryMonitor(eventListener),
                 immediateFuture(new MockQueryExecution()),
                 createClusterSizeMonitor(0),
                 directExecutor(),
                 dispatchQuery -> {},
+                QUERY_FORWARDER,
                 execution -> {},
                 false,
                 QUERY_PREREQUISITES);

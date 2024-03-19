@@ -42,12 +42,13 @@ public class FailedDispatchQueryFactory
         this.executor = requireNonNull(dispatchExecutor, "dispatchExecutor is null").getExecutor();
     }
 
-    public FailedDispatchQuery createFailedDispatchQuery(Session session, String query, Optional<ResourceGroupId> resourceGroup, Throwable throwable)
+    public FailedDispatchQuery createFailedDispatchQuery(Session session, String query, String slug, Optional<ResourceGroupId> resourceGroup, Throwable throwable)
     {
         ExecutionFailureInfo failure = toFailure(throwable);
         FailedDispatchQuery failedDispatchQuery = new FailedDispatchQuery(
                 session,
                 query,
+                slug,
                 locationFactory.createQueryLocation(session.getQueryId()),
                 resourceGroup,
                 failure,

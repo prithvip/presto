@@ -19,6 +19,7 @@ import com.facebook.presto.client.QueryError;
 import com.facebook.presto.client.QueryResults;
 import com.facebook.presto.client.StatementStats;
 import com.facebook.presto.common.ErrorCode;
+import com.facebook.presto.dispatcher.CoordinatorLocation;
 import com.facebook.presto.dispatcher.DispatchExecutor;
 import com.facebook.presto.dispatcher.DispatchInfo;
 import com.facebook.presto.dispatcher.DispatchManager;
@@ -104,6 +105,7 @@ import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN_TYPE;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static javax.ws.rs.core.UriBuilder.fromUri;
 
 @Path("/")
 @RolesAllowed(USER)
@@ -377,9 +379,18 @@ public class QueuedStatementResource
         return QueryResourceUtil.prependUri(uri, xPrestoPrefixUrl);
     }
 
-    private static URI getQueuedUri(QueryId queryId, String slug, long token, UriInfo uriInfo, String xForwardedProto, String xPrestoPrefixUrl, boolean binaryResults)
+    private static URI getQueuedUri(
+            Optional<CoordinatorLocation> coordinatorLocation,
+            QueryId queryId,
+            String slug,
+            long token,
+            UriInfo uriInfo,
+            String xForwardedProto,
+            String xPrestoPrefixUrl,
+            boolean binaryResults)
     {
-        UriBuilder uriBuilder = uriInfo.getBaseUriBuilder()
+        UriBuilder uriBuilder = coordinatorLocation.isPresent() ? fromUri(coordinatorLocation.get().getUri(uriInfo, xForwardedProto)) : uriInfo.getBaseUriBuilder();
+        uriBuilder = uriBuilder
                 .scheme(getScheme(xForwardedProto, uriInfo))
                 .replacePath("/v1/statement/queued")
                 .path(queryId.toString())
@@ -455,7 +466,7 @@ public class QueuedStatementResource
         private final DispatchManager dispatchManager;
         private final LocalQueryProvider queryProvider;
         private final QueryId queryId;
-        private final String slug = "x" + randomUUID().toString().toLowerCase(ENGLISH).replace("-", "");
+        private final String slug;
         private final AtomicLong lastToken = new AtomicLong();
         private final int retryCount;
 
@@ -468,7 +479,8 @@ public class QueuedStatementResource
             this.sessionContext = requireNonNull(sessionContext, "sessionContext is null");
             this.dispatchManager = requireNonNull(dispatchManager, "dispatchManager is null");
             this.queryProvider = requireNonNull(queryResultsProvider, "queryExecutor is null");
-            this.queryId = dispatchManager.createQueryId();
+            this.queryId = sessionContext.getQueryId().orElse(dispatchManager.createQueryId());
+            this.slug = sessionContext.getSlug().orElse("x" + randomUUID().toString().toLowerCase(ENGLISH).replace("-", ""));
             this.retryCount = retryCount;
         }
 
@@ -546,6 +558,11 @@ public class QueuedStatementResource
             return dispatchManager.waitForDispatched(queryId);
         }
 
+        private ListenableFuture<?> waitForForwarded()
+        {
+            return dispatchManager.waitForForwarded(queryId);
+        }
+
         /**
          * Returns a placeholder for query results for the client to poll
          * @param uriInfo {@link javax.ws.rs.core.UriInfo}
@@ -597,6 +614,11 @@ public class QueuedStatementResource
                         .build()));
             }
 
+            if (waitForForwarded().isDone()) {
+                // Query is forwarded so set token to 1
+                return immediateFuture(withCompressionConfiguration(Response.ok(createQueryResults(1, uriInfo, xForwardedProto, xPrestoPrefixUrl, dispatchInfo.get(), binaryResults)), compressionEnabled).build());
+            }
+
             if (!waitForDispatched().isDone()) {
                 return immediateFuture(withCompressionConfiguration(Response.ok(createQueryResults(token + 1, uriInfo, xForwardedProto, xPrestoPrefixUrl, dispatchInfo.get(), binaryResults)), compressionEnabled).build());
             }
@@ -646,7 +668,7 @@ public class QueuedStatementResource
             if (dispatchInfo.getFailureInfo().isPresent()) {
                 return null;
             }
-            return getQueuedUri(queryId, slug, token, uriInfo, xForwardedProto, xPrestoPrefixUrl, binaryResults);
+            return getQueuedUri(dispatchInfo.getCoordinatorLocation(), queryId, slug, token, uriInfo, xForwardedProto, xPrestoPrefixUrl, binaryResults);
         }
 
         private QueryError toQueryError(ExecutionFailureInfo executionFailureInfo)

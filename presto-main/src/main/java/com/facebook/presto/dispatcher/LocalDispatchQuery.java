@@ -37,6 +37,7 @@ import io.airlift.units.DataSize;
 import io.airlift.units.Duration;
 import org.joda.time.DateTime;
 
+import java.net.URI;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
@@ -47,10 +48,12 @@ import static com.facebook.airlift.concurrent.MoreFutures.addExceptionCallback;
 import static com.facebook.airlift.concurrent.MoreFutures.addSuccessCallback;
 import static com.facebook.airlift.concurrent.MoreFutures.tryGetFutureValue;
 import static com.facebook.presto.execution.QueryState.FAILED;
+import static com.facebook.presto.execution.QueryState.FORWARDED;
 import static com.facebook.presto.execution.QueryState.QUEUED;
 import static com.facebook.presto.spi.StandardErrorCode.GENERIC_INTERNAL_ERROR;
 import static com.facebook.presto.spi.StandardErrorCode.USER_CANCELED;
 import static com.facebook.presto.util.Failures.toFailure;
+import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.util.concurrent.Futures.nonCancellationPropagating;
 import static io.airlift.units.DataSize.Unit.BYTE;
 import static java.util.Objects.requireNonNull;
@@ -61,6 +64,7 @@ public class LocalDispatchQuery
 {
     private static final Logger log = Logger.get(LocalDispatchQuery.class);
     private final QueryStateMachine stateMachine;
+    private final String slug;
     private final QueryMonitor queryMonitor;
     private final ListenableFuture<QueryExecution> queryExecutionFuture;
 
@@ -69,8 +73,10 @@ public class LocalDispatchQuery
     private final Executor queryExecutor;
 
     private final Consumer<DispatchQuery> queryQueuer;
+    private final QueryForwarder queryForwarder;
     private final Consumer<QueryExecution> querySubmitter;
     private final SettableFuture<?> submitted = SettableFuture.create();
+    private final SettableFuture<?> forwarded = SettableFuture.create();
     private final AtomicReference<Optional<ResourceGroupQueryLimits>> resourceGroupQueryLimits = new AtomicReference<>(Optional.empty());
 
     private final boolean retry;
@@ -93,20 +99,24 @@ public class LocalDispatchQuery
      */
     public LocalDispatchQuery(
             QueryStateMachine stateMachine,
+            String slug,
             QueryMonitor queryMonitor,
             ListenableFuture<QueryExecution> queryExecutionFuture,
             ClusterSizeMonitor clusterSizeMonitor,
             Executor queryExecutor,
             Consumer<DispatchQuery> queryQueuer,
+            QueryForwarder queryForwarder,
             Consumer<QueryExecution> querySubmitter,
             boolean retry,
             QueryPrerequisites queryPrerequisites)
     {
         this.stateMachine = requireNonNull(stateMachine, "stateMachine is null");
+        this.slug = requireNonNull(slug, "slug is null");
         this.queryMonitor = requireNonNull(queryMonitor, "queryMonitor is null");
         this.queryExecutionFuture = requireNonNull(queryExecutionFuture, "queryExecutionFuture is null");
         this.clusterSizeMonitor = requireNonNull(clusterSizeMonitor, "clusterSizeMonitor is null");
         this.queryExecutor = requireNonNull(queryExecutor, "queryExecutor is null");
+        this.queryForwarder = requireNonNull(queryForwarder, "queryForwarder is null");
         this.queryQueuer = requireNonNull(queryQueuer, "queryQueuer is null");
         this.querySubmitter = requireNonNull(querySubmitter, "querySubmitter is null");
         this.retry = retry;
@@ -118,8 +128,13 @@ public class LocalDispatchQuery
             }
         });
         stateMachine.addStateChangeListener(state -> {
-            if (state.isDone()) {
+            if (state.isDone() && state != FORWARDED) {
                 submitted.set(null);
+            }
+        });
+        stateMachine.addStateChangeListener(state -> {
+            if (state == FORWARDED) {
+                forwarded.set(null);
             }
         });
     }
@@ -253,6 +268,14 @@ public class LocalDispatchQuery
                     .orElseGet(() -> toFailure(new PrestoException(GENERIC_INTERNAL_ERROR, "Query failed for an unknown reason")));
             return DispatchInfo.failed(failureInfo, queryInfo.getQueryStats().getElapsedTime(), queryInfo.getQueryStats().getWaitingForPrerequisitesTime(), queryInfo.getQueryStats().getQueuedTime());
         }
+        if (queryInfo.getState() == FORWARDED) {
+            return DispatchInfo.forwarded(
+                    // forwardedLocation will always be present if query state is FORWARDED
+                    stateMachine.getForwardedLocation().get(),
+                    queryInfo.getQueryStats().getElapsedTime(),
+                    queryInfo.getQueryStats().getWaitingForPrerequisitesTime(),
+                    queryInfo.getQueryStats().getQueuedTime());
+        }
         if (dispatched) {
             return DispatchInfo.dispatched(new LocalCoordinatorLocation(), queryInfo.getQueryStats().getElapsedTime(), queryInfo.getQueryStats().getWaitingForPrerequisitesTime(), queryInfo.getQueryStats().getQueuedTime());
         }
@@ -266,6 +289,12 @@ public class LocalDispatchQuery
     public QueryId getQueryId()
     {
         return stateMachine.getQueryId();
+    }
+
+    @Override
+    public String getSlug()
+    {
+        return slug;
     }
 
     @Override
@@ -333,6 +362,35 @@ public class LocalDispatchQuery
     public Session getSession()
     {
         return stateMachine.getSession();
+    }
+
+    @Override
+    public ListenableFuture<?> forward(URI forwardingUri)
+    {
+        checkState(stateMachine.getQueryState().ordinal() <= QUEUED.ordinal(), "Query has already been de-queued");
+
+        try {
+            ListenableFuture<?> forwardingFuture = queryForwarder.waitForForwarding(forwardingUri, getSession(), getSlug(), getBasicQueryInfo().getQuery());
+            addStateChangeListener(state -> {
+                if (state.ordinal() > QUEUED.ordinal()) {
+                    forwardingFuture.cancel(true);
+                }
+            });
+            addSuccessCallback(forwardingFuture, () -> stateMachine.transitionToForwarded(new RemoteCoordinatorLocation(forwardingUri)));
+            addExceptionCallback(forwardingFuture, this::fail);
+        }
+        catch (Throwable t) {
+            fail(t);
+            throw t;
+        }
+
+        return forwarded;
+    }
+
+    @Override
+    public ListenableFuture<?> getForwardedFuture()
+    {
+        return nonCancellationPropagating(forwarded);
     }
 
     @Override

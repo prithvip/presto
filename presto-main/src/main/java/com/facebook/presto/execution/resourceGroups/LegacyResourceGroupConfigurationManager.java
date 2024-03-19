@@ -47,8 +47,8 @@ public class LegacyResourceGroupConfigurationManager
 
     public LegacyResourceGroupConfigurationManager(int hardConcurrencyLimit, int maxQueued)
     {
-        checkArgument(hardConcurrencyLimit > 0, "hardConcurrencyLimit must be greater than 0");
-        checkArgument(maxQueued > 0, "maxQueued must be greater than 0");
+        checkArgument(hardConcurrencyLimit >= 0, "hardConcurrencyLimit must be greater than or equal to 0");
+        checkArgument(maxQueued >= 0, "maxQueued must be greater than or equal to 0");
         this.hardConcurrencyLimit = hardConcurrencyLimit;
         this.maxQueued = maxQueued;
     }

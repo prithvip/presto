@@ -14,6 +14,7 @@
 package com.facebook.presto.server;
 
 import com.facebook.presto.dispatcher.DispatchManager;
+import com.facebook.presto.dispatcher.RemoteCoordinatorLocation;
 import com.facebook.presto.execution.QueryInfo;
 import com.facebook.presto.execution.QueryManager;
 import com.facebook.presto.execution.QueryState;
@@ -25,6 +26,7 @@ import com.facebook.presto.spi.PrestoException;
 import com.facebook.presto.spi.QueryId;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Ordering;
+import com.google.common.util.concurrent.ListenableFuture;
 
 import javax.annotation.security.RolesAllowed;
 import javax.inject.Inject;
@@ -45,7 +47,9 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.UriInfo;
 
+import java.net.MalformedURLException;
 import java.net.URI;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -55,6 +59,8 @@ import java.util.Locale;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 
+import static com.facebook.airlift.concurrent.MoreFutures.addSuccessCallback;
+import static com.facebook.airlift.http.server.AsyncResponseHandler.bindAsyncResponse;
 import static com.facebook.presto.connector.system.KillQueryProcedure.createKillQueryException;
 import static com.facebook.presto.connector.system.KillQueryProcedure.createPreemptQueryException;
 import static com.facebook.presto.execution.QueryState.FAILED;
@@ -65,6 +71,10 @@ import static com.facebook.presto.server.security.RoleType.USER;
 import static com.google.common.base.MoreObjects.firstNonNull;
 import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.net.HttpHeaders.X_FORWARDED_PROTO;
+import static com.google.common.util.concurrent.Futures.immediateFuture;
+import static com.google.common.util.concurrent.Futures.transform;
+import static com.google.common.util.concurrent.Futures.transformAsync;
+import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 import static java.lang.String.format;
 import static java.util.Comparator.comparing;
 import static java.util.Comparator.comparingInt;
@@ -248,6 +258,53 @@ public class QueryResource
             return;
         }
         asyncResponse.resume(failQuery(queryId, createPreemptQueryException(message)));
+    }
+
+    @PUT
+    @Path("{queryId}/forwarded")
+    public void forwardQuery(
+            @PathParam("queryId") QueryId queryId,
+            String forwardingLocationURL,
+            @HeaderParam(X_FORWARDED_PROTO) String xForwardedProto,
+            @Context UriInfo uriInfo,
+            @Context HttpServletRequest servletRequest,
+            @Suspended AsyncResponse asyncResponse)
+    {
+        requireNonNull(queryId, "queryId is null");
+        requireNonNull(forwardingLocationURL, "forwardingLocationURL is null");
+
+        if (resourceManagerEnabled && !dispatchManager.isQueryPresent(queryId)) {
+            proxyResponse(servletRequest, asyncResponse, xForwardedProto, uriInfo);
+            return;
+        }
+        bindAsyncResponse(asyncResponse, forwardQuery(queryId, forwardingLocationURL, uriInfo, xForwardedProto), directExecutor());
+    }
+
+    private ListenableFuture<Response> forwardQuery(QueryId queryId, String forwardingURL, UriInfo uriInfo, String xForwardedProto)
+    {
+        RemoteCoordinatorLocation forwardingLocation;
+        try {
+            forwardingLocation = new RemoteCoordinatorLocation(new URL(forwardingURL));
+        }
+        catch (MalformedURLException e) {
+            return immediateFuture(Response.status(BAD_REQUEST).build());
+        }
+
+        try {
+            return transform(
+                    dispatchManager.forwardQuery(queryId, forwardingLocation.getUri(uriInfo, xForwardedProto)),
+                    forwarded -> {
+                        if (!forwardingLocation.equals(dispatchManager.getDispatchInfo(queryId).get().getCoordinatorLocation().get())) {
+                            return Response.status(Status.CONFLICT).build();
+                        }
+                        return Response.status(Status.OK).build();
+                    },
+                    directExecutor());
+        }
+        catch (IllegalArgumentException e) {
+            // query has already been de-queued
+            return immediateFuture(Response.status(Status.CONFLICT).build());
+        }
     }
 
     private Response failQuery(QueryId queryId, PrestoException queryException)

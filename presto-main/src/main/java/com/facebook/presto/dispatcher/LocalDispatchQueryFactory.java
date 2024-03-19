@@ -64,6 +64,7 @@ public class LocalDispatchQueryFactory
     private final ListeningExecutorService executor;
 
     private final QueryPrerequisitesManager queryPrerequisitesManager;
+    private final QueryForwarder queryForwarder;
 
     /**
      * Instantiates a new Local dispatch query factory.
@@ -90,7 +91,8 @@ public class LocalDispatchQueryFactory
             ExecutionFactoriesManager executionFactoriesManager,
             ClusterSizeMonitor clusterSizeMonitor,
             DispatchExecutor dispatchExecutor,
-            QueryPrerequisitesManager queryPrerequisitesManager)
+            QueryPrerequisitesManager queryPrerequisitesManager,
+            QueryForwarder queryForwarder)
     {
         this.queryManager = requireNonNull(queryManager, "queryManager is null");
         this.transactionManager = requireNonNull(transactionManager, "transactionManager is null");
@@ -104,6 +106,7 @@ public class LocalDispatchQueryFactory
 
         this.executor = requireNonNull(dispatchExecutor, "executorService is null").getExecutor();
         this.queryPrerequisitesManager = requireNonNull(queryPrerequisitesManager, "queryPrerequisitesManager is null");
+        this.queryForwarder = requireNonNull(queryForwarder, "queryForwarder is null");
     }
 
     /**
@@ -169,11 +172,13 @@ public class LocalDispatchQueryFactory
 
         return new LocalDispatchQuery(
                 stateMachine,
+                slug,
                 queryMonitor,
                 queryExecutionFuture,
                 clusterSizeMonitor,
                 executor,
                 queryQueuer,
+                queryForwarder,
                 queryManager::createQuery,
                 retryCount > 0,
                 queryPrerequisitesManager);

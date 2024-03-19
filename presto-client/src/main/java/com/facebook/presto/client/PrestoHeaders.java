@@ -15,6 +15,8 @@ package com.facebook.presto.client;
 
 public final class PrestoHeaders
 {
+    public static final String PRESTO_QUERY_ID = "X-Presto-Query-Id";
+    public static final String PRESTO_SLUG = "X-Presto-Slug";
     public static final String PRESTO_USER = "X-Presto-User";
     public static final String PRESTO_SOURCE = "X-Presto-Source";
     public static final String PRESTO_CATALOG = "X-Presto-Catalog";

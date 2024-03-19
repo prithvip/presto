@@ -126,7 +126,7 @@ public class QueryManagerConfig
     }
 
     @Deprecated
-    @Min(1)
+    @Min(0)
     public int getMaxConcurrentQueries()
     {
         return maxConcurrentQueries;
@@ -141,7 +141,7 @@ public class QueryManagerConfig
     }
 
     @Deprecated
-    @Min(1)
+    @Min(0)
     public int getMaxQueuedQueries()
     {
         return maxQueuedQueries;

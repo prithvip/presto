@@ -20,6 +20,7 @@ import com.facebook.presto.common.resourceGroups.QueryType;
 import com.facebook.presto.common.transaction.TransactionId;
 import com.facebook.presto.common.type.Type;
 import com.facebook.presto.cost.StatsAndCosts;
+import com.facebook.presto.dispatcher.CoordinatorLocation;
 import com.facebook.presto.execution.QueryExecution.QueryOutputInfo;
 import com.facebook.presto.execution.StateMachine.StateChangeListener;
 import com.facebook.presto.memory.VersionedMemoryPoolId;
@@ -76,6 +77,7 @@ import static com.facebook.presto.execution.BasicStageExecutionStats.EMPTY_STAGE
 import static com.facebook.presto.execution.QueryState.DISPATCHING;
 import static com.facebook.presto.execution.QueryState.FINISHED;
 import static com.facebook.presto.execution.QueryState.FINISHING;
+import static com.facebook.presto.execution.QueryState.FORWARDED;
 import static com.facebook.presto.execution.QueryState.PLANNING;
 import static com.facebook.presto.execution.QueryState.QUEUED;
 import static com.facebook.presto.execution.QueryState.RUNNING;
@@ -151,6 +153,7 @@ public class QueryStateMachine
     private final AtomicReference<String> updateType = new AtomicReference<>();
 
     private final AtomicReference<ExecutionFailureInfo> failureCause = new AtomicReference<>();
+    private final AtomicReference<CoordinatorLocation> forwardedLocation = new AtomicReference<>();
 
     private final AtomicReference<StatsAndCosts> planStatsAndCosts = new AtomicReference<>();
     private final AtomicReference<Map<PlanNodeId, PlanNode>> planIdNodeMap = new AtomicReference<>();
@@ -866,6 +869,14 @@ public class QueryStateMachine
         }
     }
 
+    public boolean transitionToForwarded(CoordinatorLocation forwardedLocation)
+    {
+        cleanupQueryQuietly();
+        queryStateTimer.endQuery();
+        this.forwardedLocation.compareAndSet(null, forwardedLocation);
+        return queryState.setIf(FORWARDED, currentState -> currentState.ordinal() <= QUEUED.ordinal());
+    }
+
     private void transitionToFinished()
     {
         cleanupQueryQuietly();
@@ -1026,6 +1037,14 @@ public class QueryStateMachine
             return Optional.empty();
         }
         return Optional.ofNullable(this.failureCause.get());
+    }
+
+    public Optional<CoordinatorLocation> getForwardedLocation()
+    {
+        if (queryState.get() != FORWARDED) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable(forwardedLocation.get());
     }
 
     public Optional<QueryInfo> getFinalQueryInfo()

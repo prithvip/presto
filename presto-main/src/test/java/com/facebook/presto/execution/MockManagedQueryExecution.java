@@ -15,6 +15,7 @@ package com.facebook.presto.execution;
 
 import com.facebook.presto.Session;
 import com.facebook.presto.common.ErrorCode;
+import com.facebook.presto.dispatcher.CoordinatorLocation;
 import com.facebook.presto.execution.StateMachine.StateChangeListener;
 import com.facebook.presto.server.BasicQueryInfo;
 import com.facebook.presto.server.BasicQueryStats;
@@ -24,6 +25,7 @@ import com.facebook.presto.spi.resourceGroups.ResourceGroupId;
 import com.facebook.presto.spi.resourceGroups.ResourceGroupQueryLimits;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.util.concurrent.ListenableFuture;
 import io.airlift.units.DataSize;
 import io.airlift.units.Duration;
 import org.joda.time.DateTime;
@@ -37,10 +39,12 @@ import java.util.OptionalDouble;
 import static com.facebook.presto.SystemSessionProperties.QUERY_PRIORITY;
 import static com.facebook.presto.execution.QueryState.FAILED;
 import static com.facebook.presto.execution.QueryState.FINISHED;
+import static com.facebook.presto.execution.QueryState.FORWARDED;
 import static com.facebook.presto.execution.QueryState.QUEUED;
 import static com.facebook.presto.execution.QueryState.RUNNING;
 import static com.facebook.presto.execution.QueryState.WAITING_FOR_PREREQUISITES;
 import static com.facebook.presto.testing.TestingSession.testSessionBuilder;
+import static com.google.common.util.concurrent.Futures.immediateFuture;
 import static io.airlift.units.DataSize.Unit.BYTE;
 import static io.airlift.units.DataSize.succinctBytes;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
@@ -194,6 +198,12 @@ public class MockManagedQueryExecution
     {
         state = RUNNING;
         fireStateChange();
+    }
+
+    @Override
+    public ListenableFuture<?> forward(URI location)
+    {
+        return immediateFuture(null);
     }
 
     @Override

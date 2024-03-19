@@ -18,6 +18,7 @@ import com.facebook.presto.Session.ResourceEstimateBuilder;
 import com.facebook.presto.common.RuntimeStats;
 import com.facebook.presto.common.transaction.TransactionId;
 import com.facebook.presto.metadata.SessionPropertyManager;
+import com.facebook.presto.spi.QueryId;
 import com.facebook.presto.spi.function.SqlFunctionId;
 import com.facebook.presto.spi.function.SqlInvokedFunction;
 import com.facebook.presto.spi.security.Identity;
@@ -66,11 +67,13 @@ import static com.facebook.presto.client.PrestoHeaders.PRESTO_CLIENT_TAGS;
 import static com.facebook.presto.client.PrestoHeaders.PRESTO_EXTRA_CREDENTIAL;
 import static com.facebook.presto.client.PrestoHeaders.PRESTO_LANGUAGE;
 import static com.facebook.presto.client.PrestoHeaders.PRESTO_PREPARED_STATEMENT;
+import static com.facebook.presto.client.PrestoHeaders.PRESTO_QUERY_ID;
 import static com.facebook.presto.client.PrestoHeaders.PRESTO_RESOURCE_ESTIMATE;
 import static com.facebook.presto.client.PrestoHeaders.PRESTO_ROLE;
 import static com.facebook.presto.client.PrestoHeaders.PRESTO_SCHEMA;
 import static com.facebook.presto.client.PrestoHeaders.PRESTO_SESSION;
 import static com.facebook.presto.client.PrestoHeaders.PRESTO_SESSION_FUNCTION;
+import static com.facebook.presto.client.PrestoHeaders.PRESTO_SLUG;
 import static com.facebook.presto.client.PrestoHeaders.PRESTO_SOURCE;
 import static com.facebook.presto.client.PrestoHeaders.PRESTO_TIME_ZONE;
 import static com.facebook.presto.client.PrestoHeaders.PRESTO_TRACE_TOKEN;
@@ -95,6 +98,8 @@ public final class HttpRequestSessionContext
     private static final JsonCodec<SqlInvokedFunction> SQL_INVOKED_FUNCTION_JSON_CODEC = jsonCodec(SqlInvokedFunction.class);
     private static final String X509_ATTRIBUTE = "javax.servlet.request.X509Certificate";
 
+    private final Optional<QueryId> queryId;
+    private final Optional<String> slug;
     private final String catalog;
     private final String schema;
 
@@ -141,6 +146,8 @@ public final class HttpRequestSessionContext
     public HttpRequestSessionContext(HttpServletRequest servletRequest, SqlParserOptions sqlParserOptions, TracerProvider tracerProvider, Optional<SessionPropertyManager> sessionPropertyManager)
             throws WebApplicationException
     {
+        queryId = parseQueryId(servletRequest);
+        slug = Optional.ofNullable(trimEmptyToNull(servletRequest.getHeader(PRESTO_SLUG)));
         catalog = trimEmptyToNull(servletRequest.getHeader(PRESTO_CATALOG));
         schema = trimEmptyToNull(servletRequest.getHeader(PRESTO_SCHEMA));
         assertRequest((catalog != null) || (schema == null), "Schema is set but catalog is not");
@@ -256,6 +263,13 @@ public final class HttpRequestSessionContext
                 .map(splitter::splitToList)
                 .flatMap(Collection::stream)
                 .collect(toImmutableList());
+    }
+
+    private Optional<QueryId> parseQueryId(HttpServletRequest servletRequest)
+    {
+        // TODO: Validate that this is a proper query ID
+        String queryId = trimEmptyToNull(servletRequest.getHeader(PRESTO_QUERY_ID));
+        return queryId == null ? Optional.empty() : Optional.of(new QueryId(queryId));
     }
 
     private static Map<String, String> parseSessionHeaders(HttpServletRequest servletRequest)
@@ -408,6 +422,18 @@ public final class HttpRequestSessionContext
     public List<X509Certificate> getCertificates()
     {
         return certificates;
+    }
+
+    @Override
+    public Optional<QueryId> getQueryId()
+    {
+        return queryId;
+    }
+
+    @Override
+    public Optional<String> getSlug()
+    {
+        return slug;
     }
 
     @Override

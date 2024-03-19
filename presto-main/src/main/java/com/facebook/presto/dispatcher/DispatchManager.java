@@ -51,6 +51,7 @@ import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import javax.inject.Inject;
 
+import java.net.URI;
 import java.security.Principal;
 import java.util.List;
 import java.util.Optional;
@@ -342,7 +343,7 @@ public class DispatchManager
                         .setSource(sessionContext.getSource())
                         .build();
             }
-            DispatchQuery failedDispatchQuery = failedDispatchQueryFactory.createFailedDispatchQuery(session, query, Optional.empty(), throwable);
+            DispatchQuery failedDispatchQuery = failedDispatchQueryFactory.createFailedDispatchQuery(session, query, slug, Optional.empty(), throwable);
             queryCreated(failedDispatchQuery);
         }
     }
@@ -426,6 +427,34 @@ public class DispatchManager
     public boolean isQueryPresent(QueryId queryId)
     {
         return queryTracker.tryGetQuery(queryId).isPresent();
+    }
+
+    /**
+     * For a given queryId, forward the query to another cluster
+     *
+     * @param queryId the query id
+     * @param forwardingUri URI of coordinator of the target cluster
+     */
+    public ListenableFuture<?> forwardQuery(QueryId queryId, URI forwardingUri)
+    {
+        requireNonNull(forwardingUri, "forwardingUri is null");
+
+        return queryTracker.tryGetQuery(queryId)
+                .map(query -> query.forward(forwardingUri))
+                .orElseGet(() -> immediateFuture(null));
+    }
+
+    /**
+     * Wait for dispatched listenable future.
+     *
+     * @param queryId the query id
+     * @return the listenable future
+     */
+    public ListenableFuture<?> waitForForwarded(QueryId queryId)
+    {
+        return queryTracker.tryGetQuery(queryId)
+                .map(DispatchQuery::getForwardedFuture)
+                .orElseGet(() -> immediateFuture(null));
     }
 
     /**

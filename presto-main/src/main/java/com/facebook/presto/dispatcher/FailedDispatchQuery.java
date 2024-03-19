@@ -43,12 +43,14 @@ public class FailedDispatchQuery
 {
     private final BasicQueryInfo basicQueryInfo;
     private final Session session;
+    private final String slug;
     private final Executor executor;
     private final DispatchInfo dispatchInfo;
 
     public FailedDispatchQuery(
             Session session,
             String query,
+            String slug,
             URI self,
             Optional<ResourceGroupId> resourceGroup,
             ExecutionFailureInfo failure,
@@ -63,6 +65,7 @@ public class FailedDispatchQuery
 
         this.basicQueryInfo = immediateFailureQueryInfo(session, query, self, resourceGroup, failure);
         this.session = requireNonNull(session, "session is null");
+        this.slug = requireNonNull(slug, "slug is null");
         this.executor = requireNonNull(executor, "executor is null");
 
         this.dispatchInfo = DispatchInfo.failed(
@@ -91,6 +94,12 @@ public class FailedDispatchQuery
     }
 
     @Override
+    public ListenableFuture<?> getForwardedFuture()
+    {
+        return immediateFuture(null);
+    }
+
+    @Override
     public DispatchInfo getDispatchInfo()
     {
         return dispatchInfo;
@@ -109,6 +118,11 @@ public class FailedDispatchQuery
     public void startWaitingForResources() {}
 
     @Override
+    public ListenableFuture forward(URI forwardedLocation) {
+        return immediateFuture(null);
+    }
+
+    @Override
     public void fail(Throwable throwable) {}
 
     @Override
@@ -121,6 +135,12 @@ public class FailedDispatchQuery
     public QueryId getQueryId()
     {
         return basicQueryInfo.getQueryId();
+    }
+
+    @Override
+    public String getSlug()
+    {
+        return slug;
     }
 
     @Override

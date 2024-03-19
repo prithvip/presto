@@ -392,6 +392,8 @@ public class QueryTracker<T extends TrackedQuery>
     {
         QueryId getQueryId();
 
+        String getSlug();
+
         boolean isDone();
 
         Session getSession();

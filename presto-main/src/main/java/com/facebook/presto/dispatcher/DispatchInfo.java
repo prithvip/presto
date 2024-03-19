@@ -39,6 +39,13 @@ public class DispatchInfo
         return new DispatchInfo(Optional.empty(), Optional.empty(), elapsedTime, waitingForPrerequisitesTime, Optional.of(queuedTime));
     }
 
+    public static DispatchInfo forwarded(CoordinatorLocation forwardedLocation, Duration elapsedTime, Duration waitingForPrerequisitesTime, Duration queuedtime)
+    {
+        requireNonNull(forwardedLocation, "forwardedLocation is null");
+        requireNonNull(queuedtime, "queuedTime is null");
+        return new DispatchInfo(Optional.of(forwardedLocation), Optional.empty(), elapsedTime, waitingForPrerequisitesTime, Optional.of(queuedtime));
+    }
+
     public static DispatchInfo dispatched(CoordinatorLocation coordinatorLocation, Duration elapsedTime, Duration waitingForPrerequisitesTime, Duration queuedTime)
     {
         requireNonNull(coordinatorLocation, "coordinatorLocation is null");

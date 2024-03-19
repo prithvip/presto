@@ -24,6 +24,8 @@ public interface DispatchQuery
 
     ListenableFuture<?> getDispatchedFuture();
 
+    ListenableFuture<?> getForwardedFuture();
+
     DispatchInfo getDispatchInfo();
 
     void cancel();

@@ -63,7 +63,11 @@ public enum QueryState
     /**
      * Query execution failed.
      */
-    FAILED(true, 10);
+    FAILED(true, 10),
+    /**
+     * Query has been forwarded to another cluster
+     */
+    FORWARDED(true, 11);
 
     public static final Set<QueryState> TERMINAL_QUERY_STATES = Stream.of(QueryState.values()).filter(QueryState::isDone).collect(toImmutableSet());
 

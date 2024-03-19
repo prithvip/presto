@@ -29,6 +29,7 @@ import com.facebook.presto.dispatcher.DispatchManager;
 import com.facebook.presto.dispatcher.DispatchQueryFactory;
 import com.facebook.presto.dispatcher.FailedDispatchQueryFactory;
 import com.facebook.presto.dispatcher.LocalDispatchQueryFactory;
+import com.facebook.presto.dispatcher.QueryForwarder;
 import com.facebook.presto.event.QueryMonitor;
 import com.facebook.presto.event.QueryMonitorConfig;
 import com.facebook.presto.execution.ClusterSizeMonitor;
@@ -193,6 +194,7 @@ public class CoordinatorModule
         binder.bind(FailedDispatchQueryFactory.class).in(Scopes.SINGLETON);
         binder.bind(DispatchExecutor.class).in(Scopes.SINGLETON);
         newExporter(binder).export(DispatchExecutor.class).withGeneratedName();
+        binder.bind(QueryForwarder.class).in(Scopes.SINGLETON);
 
         // local dispatcher
         binder.bind(DispatchQueryFactory.class).to(LocalDispatchQueryFactory.class);
