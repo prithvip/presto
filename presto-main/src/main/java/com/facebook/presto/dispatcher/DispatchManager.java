@@ -40,7 +40,6 @@ import com.facebook.presto.spi.resourceGroups.SelectionContext;
 import com.facebook.presto.spi.resourceGroups.SelectionCriteria;
 import com.facebook.presto.spi.security.AccessControl;
 import com.facebook.presto.spi.security.AuthorizedIdentity;
-import com.facebook.presto.sql.analyzer.AnalyzerProviderManager;
 import com.facebook.presto.sql.analyzer.QueryPreparerProviderManager;
 import com.facebook.presto.transaction.TransactionManager;
 import com.google.common.util.concurrent.AbstractFuture;
