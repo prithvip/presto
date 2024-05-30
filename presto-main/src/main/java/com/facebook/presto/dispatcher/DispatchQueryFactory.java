@@ -45,7 +45,6 @@ public interface DispatchQueryFactory
      */
     DispatchQuery createDispatchQuery(
             Session session,
-            AnalyzerProvider analyzerProvider,
             String query,
             PreparedQuery preparedQuery,
             String slug,
