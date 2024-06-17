@@ -19,6 +19,7 @@ import com.facebook.presto.server.SessionContext;
 import com.facebook.presto.spark.accesscontrol.PrestoSparkAuthenticatorProvider;
 import com.facebook.presto.spark.accesscontrol.PrestoSparkCredentialsProvider;
 import com.facebook.presto.spark.classloader_interface.PrestoSparkSession;
+import com.facebook.presto.spi.QueryId;
 import com.facebook.presto.spi.function.SqlFunctionId;
 import com.facebook.presto.spi.function.SqlInvokedFunction;
 import com.facebook.presto.spi.security.Identity;
@@ -115,6 +116,12 @@ public class PrestoSparkSessionContext
         this.systemProperties = ImmutableMap.copyOf(requireNonNull(systemProperties, "systemProperties is null"));
         this.catalogSessionProperties = ImmutableMap.copyOf(requireNonNull(catalogSessionProperties, "catalogSessionProperties is null"));
         this.traceToken = requireNonNull(traceToken, "traceToken is null");
+    }
+
+    @Override
+    public Optional<QueryId> getQueryId()
+    {
+        return Optional.empty();
     }
 
     @Override

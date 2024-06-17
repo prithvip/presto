@@ -463,7 +463,7 @@ public class QueuedStatementResource
             this.query = requireNonNull(query, "query is null");
             this.sessionContext = requireNonNull(sessionContext, "sessionContext is null");
             this.dispatchManager = requireNonNull(dispatchManager, "dispatchManager is null");
-            this.queryId = dispatchManager.createQueryId();
+            this.queryId = sessionContext.getQueryId().orElse(dispatchManager.createQueryId());
             this.retryCount = retryCount;
         }
 
