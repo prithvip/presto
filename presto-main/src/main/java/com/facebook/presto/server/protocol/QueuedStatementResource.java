@@ -19,11 +19,10 @@ import com.facebook.presto.client.QueryError;
 import com.facebook.presto.client.QueryResults;
 import com.facebook.presto.client.StatementStats;
 import com.facebook.presto.common.ErrorCode;
-import com.facebook.presto.dispatcher.CoordinatorLocation;
+import com.facebook.presto.dispatcher.DispatchLocation;
 import com.facebook.presto.dispatcher.DispatchExecutor;
 import com.facebook.presto.dispatcher.DispatchInfo;
 import com.facebook.presto.dispatcher.DispatchManager;
-import com.facebook.presto.dispatcher.LocalCoordinatorLocation;
 import com.facebook.presto.execution.ExecutionFailureInfo;
 import com.facebook.presto.execution.QueryState;
 import com.facebook.presto.metadata.SessionPropertyManager;
@@ -612,20 +611,9 @@ public class QueuedStatementResource
                 return null;
             }
             // if dispatched, redirect to new uri
-            return dispatchInfo.getCoordinatorLocation()
-                    .map(coordinatorLocation -> getRedirectUri(coordinatorLocation, uriInfo, xForwardedProto))
+            return dispatchInfo.getDispatchLocation()
+                    .map(dispatchLocation -> dispatchLocation.getUri(uriInfo, xForwardedProto, queryId, slug))
                     .orElseGet(() -> getQueuedUri(queryId, slug, token, uriInfo, xForwardedProto, xPrestoPrefixUrl, binaryResults));
-        }
-
-        private URI getRedirectUri(CoordinatorLocation coordinatorLocation, UriInfo uriInfo, String xForwardedProto)
-        {
-            URI coordinatorUri = coordinatorLocation.getUri(uriInfo, xForwardedProto);
-            return uriBuilderFrom(coordinatorUri)
-                    .appendPath("/v1/statement/executing")
-                    .appendPath(queryId.toString())
-                    .appendPath("0")
-                    .addParameter("slug", slug)
-                    .build();
         }
 
         private QueryError toQueryError(ExecutionFailureInfo executionFailureInfo)

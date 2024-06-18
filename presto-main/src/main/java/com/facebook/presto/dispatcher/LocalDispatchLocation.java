@@ -13,23 +13,32 @@
  */
 package com.facebook.presto.dispatcher;
 
+import com.facebook.presto.spi.QueryId;
+
 import javax.ws.rs.core.UriInfo;
 
 import java.net.URI;
 
+import static com.facebook.airlift.http.client.HttpUriBuilder.uriBuilderFrom;
 import static com.google.common.base.Strings.isNullOrEmpty;
 
-public class LocalCoordinatorLocation
-        implements CoordinatorLocation
+public class LocalDispatchLocation
+        implements DispatchLocation
 {
     @Override
-    public URI getUri(UriInfo uriInfo, String xForwardedProto)
+    public URI getUri(UriInfo uriInfo, String xForwardedProto, QueryId queryId, String slug)
     {
         String scheme = isNullOrEmpty(xForwardedProto) ? uriInfo.getRequestUri().getScheme() : xForwardedProto;
-        return uriInfo.getRequestUriBuilder()
+        URI baseURI = uriInfo.getRequestUriBuilder()
                 .scheme(scheme)
                 .replacePath("")
                 .replaceQuery("")
+                .build();
+        return uriBuilderFrom(baseURI)
+                .appendPath("/v1/statement/executing")
+                .appendPath(queryId.toString())
+                .appendPath("0")
+                .addParameter("slug", slug)
                 .build();
     }
 }

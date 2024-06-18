@@ -13,11 +13,13 @@
  */
 package com.facebook.presto.dispatcher;
 
+import com.facebook.presto.spi.QueryId;
+
 import javax.ws.rs.core.UriInfo;
 
 import java.net.URI;
 
-public interface CoordinatorLocation
+public interface DispatchLocation
 {
-    URI getUri(UriInfo uriInfo, String xForwardedProto);
+    URI getUri(UriInfo uriInfo, String xForwardedProto, QueryId queryId, String slug);
 }
