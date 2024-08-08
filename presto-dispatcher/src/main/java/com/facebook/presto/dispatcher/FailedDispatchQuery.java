@@ -61,7 +61,7 @@ public class FailedDispatchQuery
         requireNonNull(failure, "failure is null");
         requireNonNull(executor, "executor is null");
 
-        this.basicQueryInfo = immediateFailureQueryInfo(session, query, self, resourceGroup, failure);
+        this.basicQueryInfo = BasicQueryInfo.immediateFailureQueryInfo(session, query, self, resourceGroup, failure);
         this.session = requireNonNull(session, "session is null");
         this.executor = requireNonNull(executor, "executor is null");
 
@@ -99,7 +99,7 @@ public class FailedDispatchQuery
     @Override
     public void addStateChangeListener(StateChangeListener<QueryState> stateChangeListener)
     {
-        executor.execute(() -> stateChangeListener.stateChanged(FAILED));
+        executor.execute(() -> stateChangeListener.stateChanged(QueryState.FAILED));
     }
 
     @Override

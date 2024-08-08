@@ -276,17 +276,17 @@ public class DispatchManager
             }
 
             // check permissions if needed
-            checkPermissions(accessControl, securityConfig, queryId, sessionContext);
+            AccessControlUtils.checkPermissions(accessControl, securityConfig, queryId, sessionContext);
 
             // get authorized identity if possible
-            Optional<AuthorizedIdentity> authorizedIdentity = getAuthorizedIdentity(accessControl, securityConfig, queryId, sessionContext);
+            Optional<AuthorizedIdentity> authorizedIdentity = AccessControlUtils.getAuthorizedIdentity(accessControl, securityConfig, queryId, sessionContext);
 
             // decode session
             session = sessionSupplier.createSession(queryId, sessionContext, warningCollectorFactory, authorizedIdentity);
 
             // prepare query
-            AnalyzerOptions analyzerOptions = createAnalyzerOptions(session, session.getWarningCollector());
-            QueryPreparerProvider queryPreparerProvider = queryPreparerProviderManager.getQueryPreparerProvider(getAnalyzerType(session));
+            AnalyzerOptions analyzerOptions = AnalyzerUtil.createAnalyzerOptions(session, session.getWarningCollector());
+            QueryPreparerProvider queryPreparerProvider = queryPreparerProviderManager.getQueryPreparerProvider(SystemSessionProperties.getAnalyzerType(session));
             preparedQuery = queryPreparerProvider.getQueryPreparer().prepareQuery(analyzerOptions, query, session.getPreparedStatements(), session.getWarningCollector());
             query = preparedQuery.getFormattedQuery().orElse(query);
 

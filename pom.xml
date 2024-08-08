@@ -198,7 +198,12 @@
         <module>redis-hbo-provider</module>
         <module>presto-singlestore</module>
         <module>presto-hana</module>
+<<<<<<< Updated upstream
         <module>presto-openapi</module>
+=======
+        <module>presto-dispatcher</module>
+        <module>presto-main-common</module>
+>>>>>>> Stashed changes
     </modules>
 
     <dependencyManagement>
@@ -619,6 +624,18 @@
             <dependency>
                 <groupId>com.facebook.presto</groupId>
                 <artifactId>presto-jmx</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.facebook.presto</groupId>
+                <artifactId>presto-main-common</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.facebook.presto</groupId>
+                <artifactId>presto-dispatcher</artifactId>
                 <version>${project.version}</version>
             </dependency>
 

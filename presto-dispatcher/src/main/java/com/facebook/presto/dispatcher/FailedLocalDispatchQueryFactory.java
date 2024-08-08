@@ -46,7 +46,7 @@ public class FailedLocalDispatchQueryFactory
     @Override
     public FailedDispatchQuery createFailedDispatchQuery(Session session, String query, Optional<ResourceGroupId> resourceGroup, Throwable throwable)
     {
-        ExecutionFailureInfo failure = toFailure(throwable);
+        ExecutionFailureInfo failure = Failures.toFailure(throwable);
         FailedDispatchQuery failedDispatchQuery = new FailedDispatchQuery(
                 session,
                 query,

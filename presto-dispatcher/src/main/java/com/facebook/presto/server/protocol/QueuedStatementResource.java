@@ -362,6 +362,73 @@ public class QueuedStatementResource
         }
     }
 
+<<<<<<< Updated upstream:presto-main/src/main/java/com/facebook/presto/server/protocol/QueuedStatementResource.java
+=======
+    private static URI getQueryHtmlUri(QueryId queryId, UriInfo uriInfo, String xForwardedProto, String xPrestoPrefixUrl)
+    {
+        URI uri = uriInfo.getRequestUriBuilder()
+                .scheme(getScheme(xForwardedProto, uriInfo))
+                .replacePath("ui/query.html")
+                .replaceQuery(queryId.toString())
+                .build();
+        return QueryResourceUtil.prependUri(uri, xPrestoPrefixUrl);
+    }
+
+    private static URI getQueuedUri(QueryId queryId, String slug, long token, UriInfo uriInfo, String xForwardedProto, String xPrestoPrefixUrl, boolean binaryResults)
+    {
+        UriBuilder uriBuilder = uriInfo.getBaseUriBuilder()
+                .scheme(getScheme(xForwardedProto, uriInfo))
+                .replacePath("/v1/statement/queued")
+                .path(queryId.toString())
+                .path(String.valueOf(token))
+                .replaceQuery("")
+                .queryParam("slug", slug);
+        if (binaryResults) {
+            uriBuilder.queryParam("binaryResults", "true");
+        }
+        URI uri = uriBuilder.build();
+        return QueryResourceUtil.prependUri(uri, xPrestoPrefixUrl);
+    }
+
+    private static String getScheme(String xForwardedProto, @Context UriInfo uriInfo)
+    {
+        return isNullOrEmpty(xForwardedProto) ? uriInfo.getRequestUri().getScheme() : xForwardedProto;
+    }
+
+    private static QueryResults createQueryResults(
+            QueryId queryId,
+            URI nextUri,
+            Optional<QueryError> queryError,
+            UriInfo uriInfo,
+            String xForwardedProto,
+            String xPrestoPrefixUrl,
+            Duration elapsedTime,
+            Optional<Duration> queuedTime,
+            Duration waitingForPrerequisitesTime)
+    {
+        QueryState state = queryError.map(error -> QueryState.FAILED).orElse(queuedTime.isPresent() ? QueryState.QUEUED : QueryState.WAITING_FOR_PREREQUISITES);
+        return new QueryResults(
+                queryId.toString(),
+                getQueryHtmlUri(queryId, uriInfo, xForwardedProto, xPrestoPrefixUrl),
+                null,
+                nextUri,
+                null,
+                null,
+                null,
+                StatementStats.builder()
+                        .setState(state.toString())
+                        .setWaitingForPrerequisites(state == QueryState.WAITING_FOR_PREREQUISITES)
+                        .setElapsedTimeMillis(elapsedTime.toMillis())
+                        .setQueuedTimeMillis(queuedTime.orElse(NO_DURATION).toMillis())
+                        .setWaitingForPrerequisitesTimeMillis(waitingForPrerequisitesTime.toMillis())
+                        .build(),
+                queryError.orElse(null),
+                ImmutableList.of(),
+                null,
+                null);
+    }
+
+>>>>>>> Stashed changes:presto-dispatcher/src/main/java/com/facebook/presto/server/protocol/QueuedStatementResource.java
     private static WebApplicationException badRequest(Status status, String message)
     {
         throw new WebApplicationException(

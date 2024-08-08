@@ -38,6 +38,7 @@ import io.airlift.units.DataSize;
 import io.airlift.units.Duration;
 import org.joda.time.DateTime;
 
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
@@ -112,10 +113,10 @@ public class LocalDispatchQuery
         this.querySubmitter = requireNonNull(querySubmitter, "querySubmitter is null");
         this.retry = retry;
         this.queryPrerequisites = requireNonNull(queryPrerequisites, "queryPrerequisites is null");
-        this.warningCollector = requireNonNull(stateMachine.getWarningCollector(), "warningCollector is null");
+        this.warningCollector = Objects.requireNonNull(stateMachine.getWarningCollector(), "warningCollector is null");
         addExceptionCallback(queryExecutionFuture, throwable -> {
             if (stateMachine.transitionToFailed(throwable)) {
-                queryMonitor.queryImmediateFailureEvent(stateMachine.getBasicQueryInfo(Optional.empty()), toFailure(throwable));
+                queryMonitor.queryImmediateFailureEvent(stateMachine.getBasicQueryInfo(Optional.empty()), Failures.toFailure(throwable));
             }
         });
         stateMachine.addStateChangeListener(state -> {
@@ -250,15 +251,15 @@ public class LocalDispatchQuery
         boolean dispatched = submitted.isDone();
         BasicQueryInfo queryInfo = stateMachine.getBasicQueryInfo(Optional.empty());
 
-        if (queryInfo.getState() == FAILED) {
+        if (queryInfo.getState() == QueryState.FAILED) {
             ExecutionFailureInfo failureInfo = stateMachine.getFailureInfo()
-                    .orElseGet(() -> toFailure(new PrestoException(GENERIC_INTERNAL_ERROR, "Query failed for an unknown reason")));
+                    .orElseGet(() -> Failures.toFailure(new PrestoException(GENERIC_INTERNAL_ERROR, "Query failed for an unknown reason")));
             return DispatchInfo.failed(failureInfo, queryInfo.getQueryStats().getElapsedTime(), queryInfo.getQueryStats().getWaitingForPrerequisitesTime(), queryInfo.getQueryStats().getQueuedTime());
         }
         if (dispatched) {
             return DispatchInfo.dispatched(new LocalCoordinatorLocation(), queryInfo.getQueryStats().getElapsedTime(), queryInfo.getQueryStats().getWaitingForPrerequisitesTime(), queryInfo.getQueryStats().getQueuedTime());
         }
-        if (queryInfo.getState() == QUEUED) {
+        if (queryInfo.getState() == QueryState.QUEUED) {
             return DispatchInfo.queued(queryInfo.getQueryStats().getElapsedTime(), queryInfo.getQueryStats().getWaitingForPrerequisitesTime(), queryInfo.getQueryStats().getQueuedTime());
         }
         return DispatchInfo.waitingForPrerequisites(queryInfo.getQueryStats().getElapsedTime(), queryInfo.getQueryStats().getWaitingForPrerequisitesTime());
@@ -341,7 +342,7 @@ public class LocalDispatchQuery
     public void fail(Throwable throwable)
     {
         if (stateMachine.transitionToFailed(throwable)) {
-            queryMonitor.queryImmediateFailureEvent(stateMachine.getBasicQueryInfo(Optional.empty()), toFailure(throwable));
+            queryMonitor.queryImmediateFailureEvent(stateMachine.getBasicQueryInfo(Optional.empty()), Failures.toFailure(throwable));
         }
     }
 
@@ -351,7 +352,7 @@ public class LocalDispatchQuery
         if (stateMachine.transitionToCanceled()) {
             BasicQueryInfo queryInfo = stateMachine.getBasicQueryInfo(Optional.empty());
             ExecutionFailureInfo failureInfo = queryInfo.getFailureInfo();
-            failureInfo = failureInfo != null ? failureInfo : toFailure(new PrestoException(USER_CANCELED, "Query was canceled"));
+            failureInfo = failureInfo != null ? failureInfo : Failures.toFailure(new PrestoException(USER_CANCELED, "Query was canceled"));
             queryMonitor.queryImmediateFailureEvent(queryInfo, failureInfo);
         }
     }

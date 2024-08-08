@@ -58,7 +58,7 @@ public class QueryPrerequisitesManager
             throws Exception
     {
         if (QUERY_PREREQUISITES_CONFIG.exists()) {
-            Map<String, String> properties = new HashMap<>(loadProperties(QUERY_PREREQUISITES_CONFIG));
+            Map<String, String> properties = new HashMap<>(PropertiesUtil.loadProperties(QUERY_PREREQUISITES_CONFIG));
 
             String factoryName = properties.remove(QUERY_PREREQUISITES_PROPERTY_NAME);
             checkArgument(!isNullOrEmpty(factoryName),
